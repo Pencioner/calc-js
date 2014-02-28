@@ -1,0 +1,151 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+  <script src="modules/jquery-1.7.2.min.js" language="javascript" type="text/javascript"></script>
+  <script src="modules/jquery.json-2.3.js" language="javascript" type="text/javascript"></script>
+  <script src="modules/slides.jquery.js"></script>
+  <script src="modules/calc-tool/calc-proto.js" language="javascript" type="text/javascript"></script>
+  <link rel="stylesheet" type="text/css" href="css/slider1.css" media="screen" />
+  <script language="javascript" type="text/javascript">
+
+jQuery(document).ready(function() {
+  CalcTool.init(onchange_callback, calc_init_f);
+  $('#flyers_per_page').slides({
+    preload: true,
+    preloadImage: 'images/loading.gif',
+	generatePagination: true,
+    generateNextPrev: false,
+    // ATTENTION: if you reorder/insert paper sizes, keep this in consistency
+    cnt_by_slide_number: { // also see the jQuery.extend(CalcTool.data, ...)
+        1: 6, // A3
+        2: 3, // A4
+    },
+    animationComplete: function(current) {
+      CalcTool.data.flyers_per_page = this.cnt_by_slide_number[current];
+      CalcTool.change_callback(); // fire that manually - can't trust external lib generated DOM
+    }
+  });
+});
+
+//CalcTool.formula = 'alert( "=" + "Math.ceil("+flyers_total+"/"+flyers_per_page+") * ( "+paper_cost+" + "+print_type+" * "+foreign_exchange+") * "+tirage_coeff+" )"); Math.floor( Math.ceil(flyers_total/flyers_per_page) * ( paper_cost + print_type * foreign_exchange) * tirage_coeff )';
+// due to XHR cross-domain security browser restrictions, URL of calculate should be on the SAME SITE
+CalcTool.calculate_url = "get_flyers_price.php";
+CalcTool.do_remote = true;
+
+jQuery.extend(CalcTool.data, { // constants and vars that may reside even in PHP script if remote calc used
+  flyers_per_page:  6, // should be just the number for first shown (#flyers_per_page) from var cnt_by_slide_number
+  foreign_exchange: 10.5,
+});
+
+// show current print cost when some of the input fields change
+function onchange_callback() {
+  CalcTool.calculate( function(value) { jQuery("#total_value").html(value) } );
+}
+
+function calc_init_f() {
+  var flyers = new SchemaItem(jQuery("#flyers_total"), get_value_basic);
+  flyers.add_behaviour(
+    function() { return true },
+    function(me, data) { // tirage multiplier is set by flyers count
+      var tirage_by_count = {
+        10000: 2.2,
+         1000: 2.5,
+          500: 2.8,
+          300: 3,
+          200: 3.85,
+          100: 3.55,
+           50: 5,
+           10: 8.4
+      };
+      var v = me.get_value();
+      var cnt;
+      for (cnt in tirage_by_count) {
+        if (v >= cnt) {
+          break;
+        }
+      }
+      if (v < cnt) { // we don't print less than minimum though
+        me.ui_elem.attr('value', cnt);
+      }
+      data.tirage_coeff = tirage_by_count[cnt];
+    },
+    null
+  );
+  CalcTool.register_item(flyers);
+  CalcTool.register_item(new SchemaItem(jQuery("#paper_cost"), get_value_select));
+  CalcTool.register_item(new SchemaItem(jQuery("#print_type"), get_value_select));
+  CalcTool.register_item(new SchemaItem(jQuery("#flyers_per_page"), function() { return CalcTool.data.flyers_per_page})); // animationComplete from slider handled the data already so stub the get value function with this little getter
+};
+
+
+  </script>
+</head>
+
+<body>
+
+<form action="#" onsubmit="javascript: return false" class="form">
+
+<div id="flyers_per_page">
+<div id="container">
+<div id="example">
+<div id="slides">
+<div class="slides_container">
+					<div class="slide">
+     				  <h1>A3</h1>
+    				  <p>Бумага</p>
+   					</div>
+
+					<div class="slide">
+       					<h1>A4</h1>
+       					<p>Бумага</p>
+     				</div>
+</div>
+<a class="prev" href="#"><img src="images/arrow-prev.png" alt="Arrow Prev" width="24" height="43" /></a> 
+<a class="next" href="#"><img src="images/arrow-next.png" alt="Arrow Next" width="24" height="43" /></a>
+<img id="frame" src="images/example-frame.png" alt="Example Frame" width="839" height="341" />
+</div>
+</div>
+</div>
+</div>
+
+
+<div class="options fbox-text">
+ <div class="fbox-select">
+     <label>Количество флаеров</label>
+  <input type="text" id="flyers_total" name="flyers_total" value="100" />
+ </div>
+ <div class="fbox-select">
+     <label>Бумага</label>
+   <select id="paper_cost" name="paper_cost">
+    <option value="0.3">Бумага 150 г/м</option>
+    <option value="0.25">Бумага 130 г/м</option>
+    <option value="0.2">Бумага 90 г/м</option>
+    <option value="0.65">Бумага 300 г/м</option>
+   </select>
+ </div>
+ <div class="fbox-select">
+   <label> Тип печати </label>
+   <select id="print_type" name="print_type">
+    <option value="0.07">повнокольровий односторонній</option>
+    <option value="0.14">повнокольоровий двосторонній</option>
+    <option value="0.1">повнокольоровий з одного боку та текст з іншого</option>
+   </select>
+ </div>
+
+ <div id="box">
+  Стоимость заказа<br><span id="total_value"></span> грн.
+ </div>
+
+
+<div class="fbox-button">
+<button type='submit' value='=' / class="buy">Супер цена, заказываю!</button>
+<button type='submit' value='=' />Нет, это дорого!</button>
+</div>
+</div>
+</form>
+
+</body>
+</html>
+
+
